@@ -1,0 +1,295 @@
+================================================================================
+  CLOUD FILE STORAGE SYSTEM (MINI GOOGLE DRIVE) — 13-PHASE BUILD PLAN
+  Stack: Java 21 · Spring Boot · Spring Security · JWT · MySQL · JPA
+================================================================================
+
+PHASE 1 — IDEA & REQUIREMENTS
+──────────────────────────────────────────────────────────────────────────────
+Goal: Define what you are building and why.
+
+Deliverables:
+  • Problem statement — users need secure cloud storage for files (docs, images, videos)
+  • Core features list:
+      - User registration & authentication
+      - File upload, download, delete
+      - Folder-based organization
+      - Secure file sharing via links
+      - Storage quota per user
+      - Admin user management
+  • Non-functional requirements — security, scalability, maintainability
+  • User roles — USER, ADMIN
+  • Out-of-scope decisions (e.g. no real-time collaboration, no frontend in v1)
+  • Success criteria — working REST API, JWT auth, file CRUD, sharing
+
+Status: [ ] Not started
+
+
+PHASE 2 — SYSTEM DESIGN & ARCHITECTURE
+──────────────────────────────────────────────────────────────────────────────
+Goal: Design the system before writing code.
+
+Deliverables:
+  • High-level architecture diagram (Client → API → Service → DB / File Storage)
+  • API design — REST endpoints grouped by module (auth, users, files, admin)
+  • Database ER diagram — users, files, folders, shares, tokens, audit logs
+  • File storage strategy — local disk vs S3-compatible (start local, abstract for future)
+  • Security design — JWT access + refresh tokens, RBAC, token blacklist
+  • Folder hierarchy model — parent-child self-referencing table
+  • Standard API response format (ApiResponse wrapper)
+  • Error handling strategy — global exception handler, HTTP status codes
+
+Status: [ ] Not started
+
+
+PHASE 3 — PROJECT SETUP & DEV ENVIRONMENT
+──────────────────────────────────────────────────────────────────────────────
+Goal: Bootstrap a clean, runnable Spring Boot project.
+
+Deliverables:
+  • Initialize Spring Boot project (Maven, Java 21)
+  • Add dependencies — Web, Security, JPA, MySQL, Validation, Lombok, Mail, JWT
+  • Configure application.properties (DB, JWT, mail, security limits)
+  • Set up MySQL database (cloud_storage_system)
+  • Configure HikariCP connection pool
+  • Set up Logback logging (application.log, error.log)
+  • Create base package structure:
+      controller / service / repository / module / dtos / security / exception / util
+  • Environment variables — JWT_SECRET, MAIL_USERNAME, MAIL_PASSWORD
+  • Verify app starts with health check endpoint
+
+Status: [ ] Not started
+
+
+PHASE 4 — DATABASE SCHEMA & ENTITY MODELING
+──────────────────────────────────────────────────────────────────────────────
+Goal: Define all JPA entities and repositories.
+
+Deliverables:
+  • Base entities — BaseEntity, AuditableEntity (createdAt, updatedAt)
+  • Users entity — username, email, password, role, status, storage quota
+  • Auth-related entities:
+      - RefreshToken, TokenBlacklist
+      - EmailVerificationToken
+      - Otp, PasswordResetOtp, PasswordHistory
+      - LoginAttempt
+  • File module entities:
+      - FileEntity (metadata: name, type, size, storagePath, userId)
+      - FolderEntity (name, parentId, userId) — hierarchical structure
+      - ShareLinkEntity (fileId, token, expiry, permissions)
+  • AuditLog entity — action, userId, IP, timestamp
+  • Enums — Role, UserStatus, AuditAction, OtpPurpose, AttemptStatus
+  • JPA repositories for all entities
+  • Hibernate ddl-auto=update, open-in-view=false
+
+Status: [ ] Not started
+
+
+PHASE 5 — USER REGISTRATION & PROFILE MANAGEMENT
+──────────────────────────────────────────────────────────────────────────────
+Goal: Allow new users to sign up and manage basic profile data.
+
+Deliverables:
+  • POST /api/v1/users/register — register with username, email, password
+  • Input validation (UserRegistrationRequest + @Valid)
+  • Password hashing with BCrypt
+  • Duplicate username/email check
+  • Default role = USER, status = PENDING (until email verified)
+  • Default storage quota assignment
+  • UserResponse DTO (no password exposed)
+  • UserService + UserServiceImpl
+  • Send verification email on registration (async)
+
+Status: [ ] Not started
+
+
+PHASE 6 — AUTHENTICATION & JWT SECURITY
+──────────────────────────────────────────────────────────────────────────────
+Goal: Secure the API with JWT-based authentication.
+
+Deliverables:
+  • Spring Security configuration — stateless, CSRF disabled
+  • JwtUtil — generate/validate access & refresh tokens
+  • JwtAuthFilter — intercept requests, validate Bearer token
+  • CustomUserDetailsService — load user by username/email
+  • JwtAuthenticationEntryPoint — 401 unauthorized responses
+  • POST /api/v1/auth/login — login with username or email
+  • POST /api/v1/auth/logout — blacklist access token + revoke refresh token
+  • POST /api/v1/auth/refresh-token — rotate tokens securely
+  • Login attempt tracking — lock account after N failed attempts
+  • GET /api/v1/auth/login-history — user's login history
+  • AdminInitializer — seed default admin user on startup
+
+Status: [ ] Not started
+
+
+PHASE 7 — EMAIL VERIFICATION & PASSWORD MANAGEMENT
+──────────────────────────────────────────────────────────────────────────────
+Goal: Complete the auth lifecycle with email flows and password security.
+
+Deliverables:
+  • EmailService — send verification, OTP, and notification emails (SMTP)
+  • GET /api/v1/auth/verify-email — activate account via token link
+  • POST /api/v1/auth/resend-verification-email
+  • Forgot password flow:
+      - POST /api/v1/auth/forgot-password/email — send OTP
+      - POST /api/v1/auth/resend-password-otp
+      - POST /api/v1/auth/verify-password-otp
+      - POST /api/v1/auth/reset-password
+  • POST /api/v1/auth/change-password — authenticated password change
+  • Password history — prevent reuse of last N passwords
+  • OTP expiry (configurable minutes)
+  • CleanupScheduler — purge expired tokens and OTPs
+
+Status: [ ] Not started
+
+
+PHASE 8 — ADMIN PANEL & ROLE-BASED ACCESS CONTROL
+──────────────────────────────────────────────────────────────────────────────
+Goal: Give admins full control over users and system stats.
+
+Deliverables:
+  • @PreAuthorize("hasRole('ADMIN')") on admin endpoints
+  • GET  /api/v1/admin/stats — total users, storage used, etc.
+  • GET  /api/v1/admin/users — list all users
+  • GET  /api/v1/admin/users/{id} — get user by ID
+  • PUT  /api/v1/admin/users/{id}/role — promote/demote USER ↔ ADMIN
+  • PATCH /api/v1/admin/users/{id}/lock — lock user account
+  • POST /api/v1/admin/users/{id}/unlock — unlock user account
+  • PATCH /api/v1/admin/users/{id}/enable — enable user
+  • PATCH /api/v1/admin/users/{id}/disable — disable user
+  • DELETE /api/v1/admin/users/{id} — soft delete user
+  • AdminService + AdminServiceImpl
+  • Audit logging for all admin actions
+
+Status: [ ] Not started
+
+
+PHASE 9 — FILE UPLOAD, DOWNLOAD & STORAGE ENGINE
+──────────────────────────────────────────────────────────────────────────────
+Goal: Core file operations — the heart of the cloud storage system.
+
+Deliverables:
+  • FileStorageService — abstract storage layer (save, read, delete on disk)
+  • FileService + FileServiceImpl
+  • POST   /api/v1/files/upload — multipart file upload
+  • GET    /api/v1/files/{id}/download — stream file to client
+  • GET    /api/v1/files — list user's files (paginated)
+  • GET    /api/v1/files/{id} — get file metadata
+  • DELETE /api/v1/files/{id} — delete file (metadata + disk)
+  • File type & size validation (max upload size config)
+  • Unique storage path generation (UUID-based)
+  • Ownership check — users can only access their own files
+  • Update user's storageUsed on upload/delete
+
+Status: [ ] Not started
+
+
+PHASE 10 — FOLDER STRUCTURE & FILE ORGANIZATION
+──────────────────────────────────────────────────────────────────────────────
+Goal: Let users organize files in a hierarchical folder tree.
+
+Deliverables:
+  • FolderService + FolderServiceImpl
+  • POST   /api/v1/folders — create folder (optional parentId for nesting)
+  • GET    /api/v1/folders — list root folders for user
+  • GET    /api/v1/folders/{id} — get folder contents (subfolders + files)
+  • PUT    /api/v1/folders/{id}/rename — rename folder
+  • DELETE /api/v1/folders/{id} — delete folder (cascade or block if not empty)
+  • Move file into folder — PATCH /api/v1/files/{id}/move
+  • Breadcrumb path resolution
+  • Prevent circular folder references
+  • Empty trash / soft-delete pattern (optional)
+
+Status: [ ] Not started
+
+
+PHASE 11 — FILE SHARING & ACCESS CONTROL
+──────────────────────────────────────────────────────────────────────────────
+Goal: Share files securely with others via time-limited links.
+
+Deliverables:
+  • ShareService + ShareServiceImpl
+  • POST   /api/v1/files/{id}/share — generate share link (token + expiry)
+  • GET    /api/v1/share/{token} — public download via share token (no auth)
+  • GET    /api/v1/files/{id}/shares — list active shares for a file
+  • DELETE /api/v1/share/{token} — revoke share link
+  • Share permissions — VIEW only (v1), extensible for EDIT
+  • Expiry enforcement — reject expired tokens
+  • Optional password protection on share links
+  • Audit log entry on share create/access/revoke
+
+Status: [ ] Not started
+
+
+PHASE 12 — STORAGE QUOTA, AUDIT LOGS & BACKGROUND JOBS
+──────────────────────────────────────────────────────────────────────────────
+Goal: Enforce limits, track activity, and keep the system clean.
+
+Deliverables:
+  • Storage quota enforcement — block upload when storageUsed >= storageQuota
+  • GET /api/v1/users/me/storage — show used vs total quota
+  • Admin override — adjust user quota via admin endpoint
+  • AuditService — log key actions (login, upload, delete, share, admin ops)
+  • AuditAction enum — LOGIN, LOGOUT, UPLOAD, DELETE, SHARE, ADMIN_*
+  • CleanupScheduler (scheduled jobs):
+      - Purge expired refresh tokens
+      - Purge expired OTPs and verification tokens
+      - Purge expired share links
+      - Purge old audit logs (retention policy)
+  • TokenBlacklistService — invalidate tokens on logout/password change
+
+Status: [ ] Not started
+
+
+PHASE 13 — TESTING, DEPLOYMENT & DOCUMENTATION
+──────────────────────────────────────────────────────────────────────────────
+Goal: Ship a production-ready, well-documented system.
+
+Deliverables:
+  • Unit tests — service layer (AuthService, FileService, etc.)
+  • Integration tests — controller endpoints with @SpringBootTest
+  • API documentation — Swagger / OpenAPI (springdoc-openapi)
+  • README.md:
+      - Project overview & feature list
+      - Tech stack & architecture diagram
+      - Setup instructions (DB, env vars, run commands)
+      - API endpoint reference
+      - Environment variables table
+  • Postman collection or .http files for manual testing
+  • Docker Compose — app + MySQL for local/staging deployment
+  • .env.example — template for required secrets
+  • Final security review — no secrets in code, CORS config, rate limiting notes
+  • CHANGELOG.md — version history
+
+Status: [ ] Not started
+
+
+================================================================================
+  QUICK REFERENCE — PHASE ORDER
+================================================================================
+
+  1.  Idea & Requirements
+  2.  System Design & Architecture
+  3.  Project Setup & Dev Environment
+  4.  Database Schema & Entity Modeling
+  5.  User Registration & Profile Management
+  6.  Authentication & JWT Security
+  7.  Email Verification & Password Management
+  8.  Admin Panel & Role-Based Access Control
+  9.  File Upload, Download & Storage Engine
+  10. Folder Structure & File Organization
+  11. File Sharing & Access Control
+  12. Storage Quota, Audit Logs & Background Jobs
+  13. Testing, Deployment & Documentation
+
+================================================================================
+  NOTES
+================================================================================
+
+  • Phases 1–4 are planning & foundation — no business logic yet.
+  • Phases 5–8 cover identity & access (already partially built in existing repo).
+  • Phases 9–11 are the core cloud storage features (FileController is empty today).
+  • Phase 12 ties together cross-cutting concerns.
+  • Phase 13 is the final polish before calling the project complete.
+
+  Mark each phase Status as [x] Done when complete.
