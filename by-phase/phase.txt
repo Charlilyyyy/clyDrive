@@ -21,7 +21,7 @@ Deliverables:
   • Out-of-scope decisions (e.g. no real-time collaboration, no frontend in v1)
   • Success criteria — working REST API, JWT auth, file CRUD, sharing
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 2 — SYSTEM DESIGN & ARCHITECTURE
