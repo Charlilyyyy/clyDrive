@@ -1,1 +1,19 @@
 # clyDrive
+
+**Cloud File Storage System (Mini Google Drive)** — a secure backend API for uploading, organizing, sharing, and managing files in the cloud.
+
+## Problem
+
+Users need a dependable place to store digital assets (documents, images, videos) that is accessible from any client, organized with folders, shareable via links, and protected by strong authentication. clyDrive addresses this by providing a REST API backed by Java, Spring Boot, MySQL, and JWT-based security.
+
+## Tech Stack (planned)
+
+- Java 21
+- Spring Boot · Spring Security · Spring Data JPA
+- MySQL
+- JWT (access + refresh tokens)
+- Local file storage (abstracted for future S3 support)
+
+## Documentation
+
+- [Problem Statement](docs/01-problem-statement.md)
