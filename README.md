@@ -17,3 +17,4 @@ Users need a dependable place to store digital assets (documents, images, videos
 ## Documentation
 
 - [Problem Statement](docs/01-problem-statement.md)
+- [Core Features](docs/02-core-features.md)
