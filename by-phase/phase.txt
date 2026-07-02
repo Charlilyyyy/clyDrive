@@ -57,7 +57,7 @@ Deliverables:
   • Environment variables — JWT_SECRET, MAIL_USERNAME, MAIL_PASSWORD
   • Verify app starts with health check endpoint
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 4 — DATABASE SCHEMA & ENTITY MODELING
