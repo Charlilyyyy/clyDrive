@@ -32,3 +32,4 @@ Users need a dependable place to store digital assets (documents, images, videos
 - [API — Admin](docs/09-api-admin.md)
 - [Database Design](docs/10-database-design.md)
 - [File Storage Strategy](docs/11-file-storage-strategy.md)
+- [Security Design](docs/12-security-design.md)
