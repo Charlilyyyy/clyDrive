@@ -30,3 +30,4 @@ Users need a dependable place to store digital assets (documents, images, videos
 - [API — Auth & Users](docs/07-api-auth-and-users.md)
 - [API — Files, Folders & Sharing](docs/08-api-files-folders-sharing.md)
 - [API — Admin](docs/09-api-admin.md)
+- [Database Design](docs/10-database-design.md)
