@@ -81,7 +81,7 @@ Deliverables:
   • JPA repositories for all entities
   • Hibernate ddl-auto=update, open-in-view=false
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 5 — USER REGISTRATION & PROFILE MANAGEMENT
