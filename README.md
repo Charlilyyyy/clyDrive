@@ -28,3 +28,4 @@ Users need a dependable place to store digital assets (documents, images, videos
 
 - [System Architecture](docs/06-architecture.md)
 - [API — Auth & Users](docs/07-api-auth-and-users.md)
+- [API — Files, Folders & Sharing](docs/08-api-files-folders-sharing.md)
