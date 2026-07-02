@@ -27,3 +27,4 @@ Users need a dependable place to store digital assets (documents, images, videos
 ### Architecture
 
 - [System Architecture](docs/06-architecture.md)
+- [API — Auth & Users](docs/07-api-auth-and-users.md)
