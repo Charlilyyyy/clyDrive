@@ -99,7 +99,7 @@ Deliverables:
   • UserService + UserServiceImpl
   • Send verification email on registration (async)
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 6 — AUTHENTICATION & JWT SECURITY
