@@ -119,7 +119,7 @@ Deliverables:
   • GET /api/v1/auth/login-history — user's login history
   • AdminInitializer — seed default admin user on startup
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 7 — EMAIL VERIFICATION & PASSWORD MANAGEMENT
