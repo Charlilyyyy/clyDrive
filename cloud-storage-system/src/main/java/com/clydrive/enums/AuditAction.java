@@ -3,7 +3,10 @@ package com.clydrive.enums;
 public enum AuditAction {
 
     LOGIN,
+    LOGIN_FAILED,
     LOGOUT,
+    ACCOUNT_LOCKED,
+    ACCOUNT_UNLOCKED,
 
     FILE_UPLOAD,
     FILE_DOWNLOAD,
