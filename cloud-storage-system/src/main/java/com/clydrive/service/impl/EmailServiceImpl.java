@@ -2,12 +2,14 @@ package com.clydrive.service.impl;
 
 import com.clydrive.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
@@ -17,26 +19,8 @@ public class EmailServiceImpl implements EmailService {
     @Value("${server.port:8080}")
     private int serverPort;
 
-    @Override
-    public void sendOtpEmail(String to, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("clyDrive — Password Reset OTP");
-        message.setText("""
-                Hello,
-
-                Your password reset OTP is: %s
-
-                This OTP is valid for 10 minutes.
-
-                If you did not request this password reset, please ignore this email.
-
-                Regards,
-                clyDrive Team
-                """.formatted(otp));
-
-        mailSender.send(message);
-    }
+    @Value("${otp.expiry.minutes}")
+    private int otpExpiryMinutes;
 
     @Async
     @Override
@@ -67,5 +51,52 @@ public class EmailServiceImpl implements EmailService {
                 """.formatted(verificationUrl));
 
         mailSender.send(message);
+        log.info("[EMAIL] Verification email sent | to={}", to);
+    }
+
+    @Async
+    @Override
+    public void sendOtpEmail(String to, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("clyDrive — Password Reset OTP");
+        message.setText("""
+                Hello,
+
+                Your password reset OTP is: %s
+
+                This OTP is valid for %d minutes.
+
+                If you did not request this password reset, please ignore this email.
+
+                Regards,
+                clyDrive Team
+                """.formatted(otp, otpExpiryMinutes));
+
+        mailSender.send(message);
+        log.info("[EMAIL] Password reset OTP email sent | to={}", to);
+    }
+
+    @Async
+    @Override
+    public void sendPasswordChangedEmail(String to) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("clyDrive — Your Password Was Changed");
+        message.setText("""
+                Hello,
+
+                This is a confirmation that the password for your clyDrive account was changed.
+
+                If you made this change, no further action is required.
+
+                If you did NOT change your password, please reset it immediately and contact support.
+
+                Regards,
+                clyDrive Team
+                """);
+
+        mailSender.send(message);
+        log.info("[EMAIL] Password changed notification sent | to={}", to);
     }
 }

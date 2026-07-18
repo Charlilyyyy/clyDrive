@@ -2,7 +2,9 @@ package com.clydrive.service;
 
 public interface EmailService {
 
+    void sendVerificationEmail(String to, String token);
+
     void sendOtpEmail(String to, String otp);
 
-    void sendVerificationEmail(String to, String token);
+    void sendPasswordChangedEmail(String to);
 }
