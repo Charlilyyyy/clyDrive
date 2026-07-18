@@ -229,6 +229,28 @@ public class AdminServiceImpl implements AdminService {
         return mapToResponse(user);
     }
 
+    @Override
+    @Transactional
+    public AdminUserResponse updateUserQuota(Long userId, long storageQuota) {
+        log.info("[ADMIN_UPDATE_QUOTA] Started | userId={} | quota={}", userId, storageQuota);
+
+        User user = findUser(userId);
+
+        if (storageQuota < user.getStorageUsed()) {
+            throw new IllegalArgumentException(
+                    "New quota cannot be less than the user's current storage used");
+        }
+
+        long previous = user.getStorageQuota();
+        user.setStorageQuota(storageQuota);
+        userRepository.save(user);
+
+        audit(user, AuditAction.ADMIN_UPDATE_QUOTA,
+                "Admin %s changed quota of '%s' from %d to %d".formatted(currentAdminId(), user.getEmail(), previous, storageQuota));
+
+        return mapToResponse(user);
+    }
+
     private void guardDefaultAdmin(User user, String message) {
         if ("admin".equalsIgnoreCase(user.getUsername())) {
             throw new IllegalArgumentException(message);

@@ -1,5 +1,6 @@
 package com.clydrive.controller;
 
+import com.clydrive.dtos.request.UpdateQuotaRequest;
 import com.clydrive.dtos.request.UpdateUserRoleRequest;
 import com.clydrive.dtos.response.AdminStatsResponse;
 import com.clydrive.dtos.response.AdminUserResponse;
@@ -107,6 +108,17 @@ public class AdminController {
         AdminUserResponse response = adminService.disableUser(id);
         return ResponseEntity.ok(ApiResponse.success(
                 HttpStatus.OK.value(), "User disabled successfully", request.getRequestURI(), response));
+    }
+
+    @PatchMapping("/users/{id}/quota")
+    public ResponseEntity<ApiResponse<AdminUserResponse>> updateUserQuota(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateQuotaRequest request,
+            HttpServletRequest servletRequest) {
+        log.info("[ADMIN_UPDATE_QUOTA] Request received | userId={} | quota={}", id, request.getStorageQuota());
+        AdminUserResponse response = adminService.updateUserQuota(id, request.getStorageQuota());
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "User quota updated successfully", servletRequest.getRequestURI(), response));
     }
 
     @DeleteMapping("/users/{id}")

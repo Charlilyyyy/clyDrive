@@ -27,4 +27,6 @@ public interface AdminService {
     AdminUserResponse disableUser(Long userId);
 
     AdminUserResponse deleteUser(Long userId);
+
+    AdminUserResponse updateUserQuota(Long userId, long storageQuota);
 }
