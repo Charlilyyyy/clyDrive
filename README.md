@@ -201,6 +201,16 @@ clyDrive/
         └── logback-spring.xml
 ```
 
+## Security Notes
+
+- **No secrets in code** — `JWT_SECRET`, mail credentials, and the admin password are supplied via environment variables; only placeholders live in `.env.example`.
+- **Passwords** are hashed with BCrypt; recent passwords cannot be reused.
+- **Stateless JWT** auth with short-lived access tokens, refresh-token rotation, and a token blacklist on logout.
+- **Account protection** — failed-login lockout, email verification, and OTP-based password reset with expiry.
+- **Security headers** — HSTS, CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and a no-referrer policy.
+- **Path-traversal guards** on all file storage operations; users can only access their own files.
+- **Rate limiting / CORS** — verification-email resends are rate limited and cooled down. A production deployment should additionally place the API behind a gateway/reverse proxy for global rate limiting and configure CORS for the intended front-end origins.
+
 ## Documentation
 
 ### Requirements

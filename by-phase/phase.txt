@@ -261,7 +261,7 @@ Deliverables:
   • Final security review — no secrets in code, CORS config, rate limiting notes
   • CHANGELOG.md — version history
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 ================================================================================
