@@ -3,6 +3,7 @@ package com.clydrive.config;
 import com.clydrive.security.JwtAuthFilter;
 import com.clydrive.security.JwtAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -51,6 +52,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/verify-password-otp",
                                 "/api/v1/auth/reset-password"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/share/*").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtEntryPoint))
