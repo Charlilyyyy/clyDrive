@@ -3,23 +3,28 @@ package com.clydrive.service.impl;
 import com.clydrive.config.SecurityProperties;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
+import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
 import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
+import com.clydrive.dtos.response.ResendVerificationEmailResponse;
 import com.clydrive.dtos.response.TokenData;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.enums.AttemptStatus;
 import com.clydrive.enums.AuditAction;
 import com.clydrive.enums.UserStatus;
 import com.clydrive.module.AuditLog;
+import com.clydrive.module.EmailVerificationToken;
 import com.clydrive.module.LoginAttempt;
 import com.clydrive.module.RefreshToken;
 import com.clydrive.module.User;
 import com.clydrive.repository.AuditLogRepository;
+import com.clydrive.repository.EmailVerificationTokenRepository;
 import com.clydrive.repository.LoginAttemptRepository;
 import com.clydrive.repository.RefreshTokenRepository;
 import com.clydrive.repository.UserRepository;
 import com.clydrive.service.AuthService;
+import com.clydrive.service.EmailService;
 import com.clydrive.service.TokenBlacklistService;
 import com.clydrive.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,16 +39,23 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
 
+    private static final int VERIFICATION_EXPIRY_MINUTES = 15;
+    private static final int RESEND_COOLDOWN_SECONDS = 60;
+    private static final int MAX_RESENDS_PER_HOUR = 3;
+
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
     private final AuditLogRepository auditLogRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final TokenBlacklistService tokenBlacklistService;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SecurityProperties securityProperties;
@@ -53,7 +65,9 @@ public class AuthServiceImpl implements AuthService {
             RefreshTokenRepository refreshTokenRepository,
             LoginAttemptRepository loginAttemptRepository,
             AuditLogRepository auditLogRepository,
+            EmailVerificationTokenRepository emailVerificationTokenRepository,
             TokenBlacklistService tokenBlacklistService,
+            EmailService emailService,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
             SecurityProperties securityProperties) {
@@ -61,7 +75,9 @@ public class AuthServiceImpl implements AuthService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.loginAttemptRepository = loginAttemptRepository;
         this.auditLogRepository = auditLogRepository;
+        this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.securityProperties = securityProperties;
@@ -207,6 +223,98 @@ public class AuthServiceImpl implements AuthService {
                         .time(attempt.getAttemptTime())
                         .build())
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public EmailVerificationResponse verifyEmail(String token) {
+        log.info("[VERIFY_EMAIL] Verification started");
+
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid verification token"));
+
+        if (verificationToken.isUsed()) {
+            throw new RuntimeException("Verification token already used");
+        }
+
+        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Verification token expired");
+        }
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        user.setEnabled(true);
+        if (user.getStatus() == UserStatus.PENDING) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
+        userRepository.save(user);
+
+        verificationToken.setUsed(true);
+        emailVerificationTokenRepository.save(verificationToken);
+
+        auditLogRepository.save(AuditLog.builder()
+                .identifier(user.getEmail())
+                .action(AuditAction.EMAIL_VERIFIED)
+                .timestamp(LocalDateTime.now())
+                .details("Email verified and account activated")
+                .build());
+
+        log.info("[VERIFY_EMAIL] Completed | userId={} | username={}", user.getId(), user.getUsername());
+
+        return EmailVerificationResponse.builder()
+                .verified(true)
+                .message("Account activated")
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ResendVerificationEmailResponse resendVerificationEmail(String email) {
+        log.info("[RESEND_VERIFICATION_EMAIL] Started | email={}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.isEmailVerified()) {
+            throw new RuntimeException("Email already verified");
+        }
+
+        long resendCount = emailVerificationTokenRepository.countByUserAndCreatedAtAfter(
+                user, LocalDateTime.now().minusHours(1));
+        if (resendCount >= MAX_RESENDS_PER_HOUR) {
+            throw new RuntimeException("Maximum resend attempts reached. Try again after 1 hour.");
+        }
+
+        EmailVerificationToken latestToken = emailVerificationTokenRepository
+                .findTopByUserOrderByCreatedAtDesc(user)
+                .orElse(null);
+        if (latestToken != null
+                && latestToken.getCreatedAt().plusSeconds(RESEND_COOLDOWN_SECONDS).isAfter(LocalDateTime.now())) {
+            throw new RuntimeException(
+                    "Please wait " + RESEND_COOLDOWN_SECONDS + " seconds before requesting another verification email.");
+        }
+
+        emailVerificationTokenRepository.deleteByUser(user);
+        emailVerificationTokenRepository.flush();
+
+        String token = UUID.randomUUID().toString();
+        emailVerificationTokenRepository.save(EmailVerificationToken.builder()
+                .token(token)
+                .user(user)
+                .used(false)
+                .resendCount((int) resendCount + 1)
+                .expiryDate(LocalDateTime.now().plusMinutes(VERIFICATION_EXPIRY_MINUTES))
+                .build());
+
+        emailService.sendVerificationEmail(user.getEmail(), token);
+
+        log.info("[RESEND_VERIFICATION_EMAIL] Completed | userId={}", user.getId());
+
+        return ResendVerificationEmailResponse.builder()
+                .emailSent(true)
+                .email(user.getEmail())
+                .expiryMinutes(VERIFICATION_EXPIRY_MINUTES)
+                .build();
     }
 
     private void validateAccountStatus(User user) {

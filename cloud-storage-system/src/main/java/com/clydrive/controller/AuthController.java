@@ -2,10 +2,13 @@ package com.clydrive.controller;
 
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
+import com.clydrive.dtos.request.ResendVerificationRequest;
 import com.clydrive.dtos.response.ApiResponse;
+import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
 import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
+import com.clydrive.dtos.response.ResendVerificationEmailResponse;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -99,6 +102,49 @@ public class AuthController {
                 ApiResponse.success(
                         HttpStatus.OK.value(),
                         "Token refreshed successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<EmailVerificationResponse>> verifyEmail(
+            @RequestParam String token,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[VERIFY_EMAIL] Request received | ip={} | uri={}",
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        EmailVerificationResponse response = authService.verifyEmail(token);
+
+        log.info("[VERIFY_EMAIL] Completed");
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Email verified successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PostMapping("/resend-verification-email")
+    public ResponseEntity<ApiResponse<ResendVerificationEmailResponse>> resendVerificationEmail(
+            @Valid @RequestBody ResendVerificationRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[RESEND_VERIFICATION_EMAIL] Request received | email={} | ip={} | uri={}",
+                request.getEmail(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        ResendVerificationEmailResponse response = authService.resendVerificationEmail(request.getEmail());
+
+        log.info("[RESEND_VERIFICATION_EMAIL] Completed | email={}", request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Verification email resent successfully",
                         httpServletRequest.getRequestURI(),
                         response));
     }
