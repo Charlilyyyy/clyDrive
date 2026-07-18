@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface FileRepository extends JpaRepository<FileEntity, Long> {
@@ -12,6 +13,8 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     Page<FileEntity> findByUserId(Long userId, Pageable pageable);
 
     Page<FileEntity> findByUserIdAndFolderId(Long userId, Long folderId, Pageable pageable);
+
+    List<FileEntity> findByUserIdAndFolderId(Long userId, Long folderId);
 
     Page<FileEntity> findByUserIdAndFolderIdIsNull(Long userId, Pageable pageable);
 
