@@ -1,11 +1,15 @@
 package com.clydrive.service;
 
+import com.clydrive.dtos.request.ForgotPasswordRequest;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
+import com.clydrive.dtos.request.VerifyPasswordOtpRequest;
+import com.clydrive.dtos.response.EmailOtpVerifyResponse;
 import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
 import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
+import com.clydrive.dtos.response.OtpResponse;
 import com.clydrive.dtos.response.ResendVerificationEmailResponse;
 import com.clydrive.dtos.response.TokenResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,4 +29,10 @@ public interface AuthService {
     EmailVerificationResponse verifyEmail(String token);
 
     ResendVerificationEmailResponse resendVerificationEmail(String email);
+
+    OtpResponse forgotPassword(ForgotPasswordRequest request);
+
+    OtpResponse resendPasswordOtp(String email);
+
+    EmailOtpVerifyResponse verifyPasswordOtp(VerifyPasswordOtpRequest request);
 }

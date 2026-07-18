@@ -1,26 +1,33 @@
 package com.clydrive.service.impl;
 
 import com.clydrive.config.SecurityProperties;
+import com.clydrive.dtos.request.ForgotPasswordRequest;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
+import com.clydrive.dtos.request.VerifyPasswordOtpRequest;
+import com.clydrive.dtos.response.EmailOtpVerifyResponse;
 import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
 import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
+import com.clydrive.dtos.response.OtpResponse;
 import com.clydrive.dtos.response.ResendVerificationEmailResponse;
 import com.clydrive.dtos.response.TokenData;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.enums.AttemptStatus;
 import com.clydrive.enums.AuditAction;
+import com.clydrive.enums.OtpPurpose;
 import com.clydrive.enums.UserStatus;
 import com.clydrive.module.AuditLog;
 import com.clydrive.module.EmailVerificationToken;
 import com.clydrive.module.LoginAttempt;
+import com.clydrive.module.Otp;
 import com.clydrive.module.RefreshToken;
 import com.clydrive.module.User;
 import com.clydrive.repository.AuditLogRepository;
 import com.clydrive.repository.EmailVerificationTokenRepository;
 import com.clydrive.repository.LoginAttemptRepository;
+import com.clydrive.repository.OtpRepository;
 import com.clydrive.repository.RefreshTokenRepository;
 import com.clydrive.repository.UserRepository;
 import com.clydrive.service.AuthService;
@@ -29,6 +36,7 @@ import com.clydrive.service.TokenBlacklistService;
 import com.clydrive.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -40,6 +48,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -54,11 +63,15 @@ public class AuthServiceImpl implements AuthService {
     private final LoginAttemptRepository loginAttemptRepository;
     private final AuditLogRepository auditLogRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final OtpRepository otpRepository;
     private final TokenBlacklistService tokenBlacklistService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SecurityProperties securityProperties;
+
+    @Value("${otp.expiry.minutes}")
+    private int otpExpiryMinutes;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -66,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
             LoginAttemptRepository loginAttemptRepository,
             AuditLogRepository auditLogRepository,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
+            OtpRepository otpRepository,
             TokenBlacklistService tokenBlacklistService,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
@@ -76,6 +90,7 @@ public class AuthServiceImpl implements AuthService {
         this.loginAttemptRepository = loginAttemptRepository;
         this.auditLogRepository = auditLogRepository;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
+        this.otpRepository = otpRepository;
         this.tokenBlacklistService = tokenBlacklistService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
@@ -314,6 +329,85 @@ public class AuthServiceImpl implements AuthService {
                 .emailSent(true)
                 .email(user.getEmail())
                 .expiryMinutes(VERIFICATION_EXPIRY_MINUTES)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public OtpResponse forgotPassword(ForgotPasswordRequest request) {
+        log.info("[FORGOT_PASSWORD] Started | email={}", request.getEmail());
+        return issuePasswordOtp(request.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public OtpResponse resendPasswordOtp(String email) {
+        log.info("[RESEND_PASSWORD_OTP] Started | email={}", email);
+        return issuePasswordOtp(email);
+    }
+
+    @Override
+    @Transactional
+    public EmailOtpVerifyResponse verifyPasswordOtp(VerifyPasswordOtpRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String otpCode = request.getOtp().trim();
+
+        log.info("[VERIFY_PASSWORD_OTP] Started | email={}", email);
+
+        Otp otp = otpRepository
+                .findByEmailAndOtpCodeAndPurpose(email, otpCode, OtpPurpose.FORGOT_PASSWORD)
+                .orElseThrow(() -> new RuntimeException("Invalid OTP"));
+
+        if (otp.isVerified()) {
+            throw new RuntimeException("OTP already verified");
+        }
+
+        if (otp.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP expired");
+        }
+
+        otp.setVerified(true);
+        otpRepository.save(otp);
+
+        log.info("[VERIFY_PASSWORD_OTP] Completed | email={}", email);
+
+        return EmailOtpVerifyResponse.builder()
+                .verified(true)
+                .email(email)
+                .canResetPassword(true)
+                .build();
+    }
+
+    private OtpResponse issuePasswordOtp(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        otpRepository.deleteByUserAndPurpose(user, OtpPurpose.FORGOT_PASSWORD);
+        otpRepository.flush();
+
+        String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(100000, 1000000));
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(otpExpiryMinutes);
+
+        otpRepository.save(Otp.builder()
+                .user(user)
+                .email(user.getEmail())
+                .otpCode(otpCode)
+                .purpose(OtpPurpose.FORGOT_PASSWORD)
+                .verified(false)
+                .attemptCount(0)
+                .expiryTime(expiryTime)
+                .build());
+
+        emailService.sendOtpEmail(user.getEmail(), otpCode);
+
+        log.info("[FORGOT_PASSWORD] OTP issued | userId={} | expiresAt={}", user.getId(), expiryTime);
+
+        return OtpResponse.builder()
+                .email(user.getEmail())
+                .expiryMinutes(otpExpiryMinutes)
+                .emailSent(true)
                 .build();
     }
 

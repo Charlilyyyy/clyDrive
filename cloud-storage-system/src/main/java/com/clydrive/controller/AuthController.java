@@ -1,13 +1,17 @@
 package com.clydrive.controller;
 
+import com.clydrive.dtos.request.ForgotPasswordRequest;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
 import com.clydrive.dtos.request.ResendVerificationRequest;
+import com.clydrive.dtos.request.VerifyPasswordOtpRequest;
 import com.clydrive.dtos.response.ApiResponse;
+import com.clydrive.dtos.response.EmailOtpVerifyResponse;
 import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
 import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
+import com.clydrive.dtos.response.OtpResponse;
 import com.clydrive.dtos.response.ResendVerificationEmailResponse;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.service.AuthService;
@@ -145,6 +149,72 @@ public class AuthController {
                 ApiResponse.success(
                         HttpStatus.OK.value(),
                         "Verification email resent successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PostMapping("/forgot-password/email")
+    public ResponseEntity<ApiResponse<OtpResponse>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[FORGOT_PASSWORD] Request received | email={} | ip={} | uri={}",
+                request.getEmail(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        OtpResponse response = authService.forgotPassword(request);
+
+        log.info("[FORGOT_PASSWORD] Completed | email={}", request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "OTP sent successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PostMapping("/resend-password-otp")
+    public ResponseEntity<ApiResponse<OtpResponse>> resendPasswordOtp(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[RESEND_PASSWORD_OTP] Request received | email={} | ip={} | uri={}",
+                request.getEmail(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        OtpResponse response = authService.resendPasswordOtp(request.getEmail());
+
+        log.info("[RESEND_PASSWORD_OTP] Completed | email={}", request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "OTP resent successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PostMapping("/verify-password-otp")
+    public ResponseEntity<ApiResponse<EmailOtpVerifyResponse>> verifyPasswordOtp(
+            @Valid @RequestBody VerifyPasswordOtpRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[VERIFY_PASSWORD_OTP] Request received | email={} | ip={} | uri={}",
+                request.getEmail(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        EmailOtpVerifyResponse response = authService.verifyPasswordOtp(request);
+
+        log.info("[VERIFY_PASSWORD_OTP] Completed | email={}", request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "OTP verified successfully",
                         httpServletRequest.getRequestURI(),
                         response));
     }

@@ -45,7 +45,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh-token",
                                 "/api/v1/auth/verify-email",
-                                "/api/v1/auth/resend-verification-email"
+                                "/api/v1/auth/resend-verification-email",
+                                "/api/v1/auth/forgot-password/email",
+                                "/api/v1/auth/resend-password-otp",
+                                "/api/v1/auth/verify-password-otp"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
