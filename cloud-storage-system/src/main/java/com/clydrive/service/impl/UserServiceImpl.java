@@ -1,14 +1,17 @@
 package com.clydrive.service.impl;
 
 import com.clydrive.dtos.request.UserRegistrationRequest;
+import com.clydrive.dtos.response.StorageResponse;
 import com.clydrive.dtos.response.UserResponse;
 import com.clydrive.enums.Role;
 import com.clydrive.enums.UserStatus;
 import com.clydrive.exception.ResourceAlreadyExistsException;
+import com.clydrive.exception.ResourceNotFoundException;
 import com.clydrive.module.EmailVerificationToken;
 import com.clydrive.module.User;
 import com.clydrive.repository.EmailVerificationTokenRepository;
 import com.clydrive.repository.UserRepository;
+import com.clydrive.security.SecurityUtils;
 import com.clydrive.service.EmailService;
 import com.clydrive.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -99,6 +102,28 @@ public class UserServiceImpl implements UserService {
                 savedUser.getId(), savedUser.getUsername());
 
         return mapToResponse(savedUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StorageResponse getMyStorage() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        long used = user.getStorageUsed();
+        long quota = user.getStorageQuota();
+        long available = Math.max(0, quota - used);
+        double percentage = quota > 0
+                ? Math.round((used * 10000.0) / quota) / 100.0
+                : 0.0;
+
+        return StorageResponse.builder()
+                .storageUsed(used)
+                .storageQuota(quota)
+                .storageAvailable(available)
+                .usagePercentage(percentage)
+                .build();
     }
 
     private UserResponse mapToResponse(User user) {
