@@ -238,7 +238,7 @@ Deliverables:
       - Purge old audit logs (retention policy)
   • TokenBlacklistService — invalidate tokens on logout/password change
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 13 — TESTING, DEPLOYMENT & DOCUMENTATION
