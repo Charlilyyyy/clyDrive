@@ -181,7 +181,7 @@ Deliverables:
   • Ownership check — users can only access their own files
   • Update user's storageUsed on upload/delete
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 10 — FOLDER STRUCTURE & FILE ORGANIZATION
