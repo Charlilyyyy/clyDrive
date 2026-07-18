@@ -1,0 +1,64 @@
+### clyDrive — Sharing & Admin
+@baseUrl = http://localhost:8080
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+@adminToken = PASTE_ADMIN_TOKEN_HERE
+@shareToken = PASTE_SHARE_TOKEN_HERE
+
+### Create share link (optional password + expiry hours)
+POST {{baseUrl}}/api/v1/files/1/share
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "expiryHours": 24,
+  "password": "open-sesame"
+}
+
+### List active shares for a file
+GET {{baseUrl}}/api/v1/files/1/shares
+Authorization: Bearer {{accessToken}}
+
+### Public download via share link
+GET {{baseUrl}}/api/v1/share/{{shareToken}}?password=open-sesame
+
+### Revoke share link
+DELETE {{baseUrl}}/api/v1/share/{{shareToken}}
+Authorization: Bearer {{accessToken}}
+
+### Admin — stats
+GET {{baseUrl}}/api/v1/admin/stats
+Authorization: Bearer {{adminToken}}
+
+### Admin — list users
+GET {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{adminToken}}
+
+### Admin — update role
+PUT {{baseUrl}}/api/v1/admin/users/2/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "ADMIN"
+}
+
+### Admin — lock user
+PATCH {{baseUrl}}/api/v1/admin/users/2/lock
+Authorization: Bearer {{adminToken}}
+
+### Admin — unlock user
+POST {{baseUrl}}/api/v1/admin/users/2/unlock
+Authorization: Bearer {{adminToken}}
+
+### Admin — update quota
+PATCH {{baseUrl}}/api/v1/admin/users/2/quota
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "storageQuota": 2147483648
+}
+
+### Admin — soft delete user
+DELETE {{baseUrl}}/api/v1/admin/users/2
+Authorization: Bearer {{adminToken}}

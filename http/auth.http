@@ -1,0 +1,86 @@
+### clyDrive — Auth & Account
+@baseUrl = http://localhost:8080
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+### Register
+POST {{baseUrl}}/api/v1/users/register
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "Secure@123",
+  "phoneNumber": "9876543210"
+}
+
+### Verify email (token arrives by email)
+GET {{baseUrl}}/api/v1/auth/verify-email?token=PASTE_TOKEN
+
+### Login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "johndoe",
+  "password": "Secure@123"
+}
+
+### Refresh token
+POST {{baseUrl}}/api/v1/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "PASTE_REFRESH_TOKEN"
+}
+
+### Storage usage
+GET {{baseUrl}}/api/v1/users/me/storage
+Authorization: Bearer {{accessToken}}
+
+### Forgot password (send OTP)
+POST {{baseUrl}}/api/v1/auth/forgot-password/email
+Content-Type: application/json
+
+{
+  "email": "john@example.com"
+}
+
+### Verify password OTP
+POST {{baseUrl}}/api/v1/auth/verify-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "otp": "123456"
+}
+
+### Reset password
+POST {{baseUrl}}/api/v1/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "newPassword": "NewSecure@456",
+  "confirmPassword": "NewSecure@456"
+}
+
+### Change password
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Secure@123",
+  "newPassword": "NewSecure@456"
+}
+
+### Logout
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "PASTE_REFRESH_TOKEN"
+}

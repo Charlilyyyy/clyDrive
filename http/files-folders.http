@@ -1,0 +1,80 @@
+### clyDrive — Files & Folders
+@baseUrl = http://localhost:8080
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+### Upload a file
+POST {{baseUrl}}/api/v1/files/upload
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----clydrive
+
+------clydrive
+Content-Disposition: form-data; name="file"; filename="notes.txt"
+Content-Type: text/plain
+
+hello clydrive
+------clydrive--
+
+### List files (paginated)
+GET {{baseUrl}}/api/v1/files?page=0&size=20
+Authorization: Bearer {{accessToken}}
+
+### File metadata
+GET {{baseUrl}}/api/v1/files/1
+Authorization: Bearer {{accessToken}}
+
+### Download file
+GET {{baseUrl}}/api/v1/files/1/download
+Authorization: Bearer {{accessToken}}
+
+### Move file into a folder
+PATCH {{baseUrl}}/api/v1/files/1/move
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "folderId": 1
+}
+
+### Delete file
+DELETE {{baseUrl}}/api/v1/files/1
+Authorization: Bearer {{accessToken}}
+
+### Create folder
+POST {{baseUrl}}/api/v1/folders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Documents"
+}
+
+### Create nested folder
+POST {{baseUrl}}/api/v1/folders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Invoices",
+  "parentId": 1
+}
+
+### List root folders
+GET {{baseUrl}}/api/v1/folders
+Authorization: Bearer {{accessToken}}
+
+### Folder contents + breadcrumbs
+GET {{baseUrl}}/api/v1/folders/1
+Authorization: Bearer {{accessToken}}
+
+### Rename folder
+PUT {{baseUrl}}/api/v1/folders/1/rename
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Archive"
+}
+
+### Delete folder (must be empty)
+DELETE {{baseUrl}}/api/v1/folders/1
+Authorization: Bearer {{accessToken}}
