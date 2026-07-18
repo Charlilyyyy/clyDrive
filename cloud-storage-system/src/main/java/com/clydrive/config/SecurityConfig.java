@@ -50,7 +50,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/email",
                                 "/api/v1/auth/resend-password-otp",
                                 "/api/v1/auth/verify-password-otp",
-                                "/api/v1/auth/reset-password"
+                                "/api/v1/auth/reset-password",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/share/*").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
