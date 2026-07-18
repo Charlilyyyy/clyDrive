@@ -37,6 +37,13 @@ public class ShareLink extends AuditableEntity {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
+    @Builder.Default
+    @Column(name = "download_count", nullable = false)
+    private long downloadCount = 0L;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean revoked = false;
