@@ -150,6 +150,25 @@ public class FileServiceImpl implements FileService {
 
     @Override
     @Transactional
+    public FileResponse moveFile(Long fileId, Long targetFolderId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        FileEntity entity = requireOwnedFile(fileId, userId);
+
+        if (targetFolderId != null) {
+            folderRepository.findByIdAndUserId(targetFolderId, userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Folder not found with id: " + targetFolderId));
+        }
+
+        entity.setFolderId(targetFolderId);
+        fileRepository.save(entity);
+
+        audit(null, AuditAction.FILE_MOVE, "Moved file id=%d to folder=%s".formatted(fileId, targetFolderId));
+        log.info("[FILE_MOVE] Completed | fileId={} | targetFolderId={}", fileId, targetFolderId);
+        return toResponse(entity);
+    }
+
+    @Override
+    @Transactional
     public void deleteFile(Long fileId) {
         Long userId = SecurityUtils.getCurrentUserId();
         FileEntity entity = requireOwnedFile(fileId, userId);

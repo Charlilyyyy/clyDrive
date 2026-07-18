@@ -16,5 +16,7 @@ public interface FileService {
 
     FileResponse getFile(Long fileId);
 
+    FileResponse moveFile(Long fileId, Long targetFolderId);
+
     void deleteFile(Long fileId);
 }
