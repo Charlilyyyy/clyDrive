@@ -89,6 +89,17 @@ Expected response:
 }
 ```
 
+### Run everything with Docker
+
+To build and run both MySQL and the API in containers:
+
+```bash
+cp .env.example .env   # fill in JWT_SECRET, MAIL_*, ADMIN_PASSWORD
+docker compose up --build -d
+```
+
+The API becomes available on `http://localhost:8080` once the containers are healthy.
+
 ### Run tests
 
 ```bash
@@ -97,6 +108,77 @@ mvn test
 ```
 
 Tests use an in-memory H2 database — no MySQL required.
+
+## API Documentation
+
+Interactive OpenAPI/Swagger documentation is available once the app is running:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+Use the **Authorize** button in Swagger UI to attach a JWT (`Bearer <accessToken>`) obtained from the login endpoint.
+
+## API Reference
+
+All responses are wrapped in a standard envelope (`status`, `message`, `path`, `data`, `timestamp`). Protected routes require an `Authorization: Bearer <accessToken>` header.
+
+### Authentication & Account
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| POST | `/api/v1/users/register` | – | Register a new user |
+| POST | `/api/v1/auth/login` | – | Log in with username/email/phone |
+| POST | `/api/v1/auth/refresh-token` | – | Rotate access/refresh tokens |
+| POST | `/api/v1/auth/logout` | ✔ | Revoke tokens |
+| GET | `/api/v1/auth/login-history` | ✔ | View login history |
+| GET | `/api/v1/auth/verify-email` | – | Verify email via token |
+| POST | `/api/v1/auth/resend-verification-email` | – | Resend verification email |
+| POST | `/api/v1/auth/forgot-password/email` | – | Send password reset OTP |
+| POST | `/api/v1/auth/resend-password-otp` | – | Resend reset OTP |
+| POST | `/api/v1/auth/verify-password-otp` | – | Verify reset OTP |
+| POST | `/api/v1/auth/reset-password` | – | Reset password via OTP |
+| POST | `/api/v1/auth/change-password` | ✔ | Change password |
+| GET | `/api/v1/users/me/storage` | ✔ | Storage usage vs quota |
+
+### Files & Folders
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| POST | `/api/v1/files/upload` | ✔ | Upload a file (multipart) |
+| GET | `/api/v1/files` | ✔ | List files (paginated) |
+| GET | `/api/v1/files/{id}` | ✔ | File metadata |
+| GET | `/api/v1/files/{id}/download` | ✔ | Download a file |
+| PATCH | `/api/v1/files/{id}/move` | ✔ | Move file into a folder |
+| DELETE | `/api/v1/files/{id}` | ✔ | Delete a file |
+| POST | `/api/v1/folders` | ✔ | Create a folder |
+| GET | `/api/v1/folders` | ✔ | List root folders |
+| GET | `/api/v1/folders/{id}` | ✔ | Folder contents + breadcrumbs |
+| PUT | `/api/v1/folders/{id}/rename` | ✔ | Rename a folder |
+| DELETE | `/api/v1/folders/{id}` | ✔ | Delete an empty folder |
+
+### Sharing
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| POST | `/api/v1/files/{id}/share` | ✔ | Create a share link |
+| GET | `/api/v1/files/{id}/shares` | ✔ | List active shares |
+| GET | `/api/v1/share/{token}` | – | Public download via share link |
+| DELETE | `/api/v1/share/{token}` | ✔ | Revoke a share link |
+
+### Admin (ADMIN role)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/admin/stats` | System statistics |
+| GET | `/api/v1/admin/users` | List all users |
+| GET | `/api/v1/admin/users/{id}` | Get user by id |
+| PUT | `/api/v1/admin/users/{id}/role` | Change user role |
+| PATCH | `/api/v1/admin/users/{id}/lock` | Lock user |
+| POST | `/api/v1/admin/users/{id}/unlock` | Unlock user |
+| PATCH | `/api/v1/admin/users/{id}/enable` | Enable user |
+| PATCH | `/api/v1/admin/users/{id}/disable` | Disable user |
+| PATCH | `/api/v1/admin/users/{id}/quota` | Update storage quota |
+| DELETE | `/api/v1/admin/users/{id}` | Soft-delete user |
 
 ## Project Structure
 
