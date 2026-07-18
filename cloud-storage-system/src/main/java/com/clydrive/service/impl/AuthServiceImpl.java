@@ -1,10 +1,13 @@
 package com.clydrive.service.impl;
 
 import com.clydrive.config.SecurityProperties;
+import com.clydrive.dtos.request.ChangePasswordRequest;
 import com.clydrive.dtos.request.ForgotPasswordRequest;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
+import com.clydrive.dtos.request.ResetPasswordRequest;
 import com.clydrive.dtos.request.VerifyPasswordOtpRequest;
+import com.clydrive.dtos.response.ChangePasswordResponse;
 import com.clydrive.dtos.response.EmailOtpVerifyResponse;
 import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
@@ -12,6 +15,7 @@ import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
 import com.clydrive.dtos.response.OtpResponse;
 import com.clydrive.dtos.response.ResendVerificationEmailResponse;
+import com.clydrive.dtos.response.ResetPasswordResponse;
 import com.clydrive.dtos.response.TokenData;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.enums.AttemptStatus;
@@ -22,12 +26,14 @@ import com.clydrive.module.AuditLog;
 import com.clydrive.module.EmailVerificationToken;
 import com.clydrive.module.LoginAttempt;
 import com.clydrive.module.Otp;
+import com.clydrive.module.PasswordHistory;
 import com.clydrive.module.RefreshToken;
 import com.clydrive.module.User;
 import com.clydrive.repository.AuditLogRepository;
 import com.clydrive.repository.EmailVerificationTokenRepository;
 import com.clydrive.repository.LoginAttemptRepository;
 import com.clydrive.repository.OtpRepository;
+import com.clydrive.repository.PasswordHistoryRepository;
 import com.clydrive.repository.RefreshTokenRepository;
 import com.clydrive.repository.UserRepository;
 import com.clydrive.service.AuthService;
@@ -64,6 +70,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuditLogRepository auditLogRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final OtpRepository otpRepository;
+    private final PasswordHistoryRepository passwordHistoryRepository;
     private final TokenBlacklistService tokenBlacklistService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -80,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
             AuditLogRepository auditLogRepository,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
             OtpRepository otpRepository,
+            PasswordHistoryRepository passwordHistoryRepository,
             TokenBlacklistService tokenBlacklistService,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
@@ -91,6 +99,7 @@ public class AuthServiceImpl implements AuthService {
         this.auditLogRepository = auditLogRepository;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.otpRepository = otpRepository;
+        this.passwordHistoryRepository = passwordHistoryRepository;
         this.tokenBlacklistService = tokenBlacklistService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
@@ -409,6 +418,125 @@ public class AuthServiceImpl implements AuthService {
                 .expiryMinutes(otpExpiryMinutes)
                 .emailSent(true)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request, HttpServletRequest httpServletRequest) {
+        String email = request.getEmail().trim().toLowerCase();
+        log.info("[RESET_PASSWORD] Started | email={}", email);
+
+        Otp otp = otpRepository
+                .findTopByEmailAndPurposeOrderByCreatedAtDesc(email, OtpPurpose.FORGOT_PASSWORD)
+                .orElseThrow(() -> new RuntimeException("OTP not found"));
+
+        if (!otp.isVerified()) {
+            throw new RuntimeException("OTP verification required");
+        }
+
+        if (otp.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP expired");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("New password cannot be same as current password");
+        }
+
+        validatePasswordHistory(user.getId(), request.getNewPassword());
+
+        savePasswordHistory(user.getId(), user.getPassword());
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        List<RefreshToken> activeTokens = refreshTokenRepository.findByUserIdAndRevokedFalse(user.getId());
+        activeTokens.forEach(token -> token.setRevoked(true));
+        refreshTokenRepository.saveAll(activeTokens);
+
+        otp.setVerified(false);
+        otpRepository.save(otp);
+
+        saveAuditLog(user.getEmail(), AuditAction.PASSWORD_CHANGE, httpServletRequest, "Password reset via OTP");
+        emailService.sendPasswordChangedEmail(user.getEmail());
+
+        log.info("[RESET_PASSWORD] Completed | userId={} | revokedTokens={}", user.getId(), activeTokens.size());
+
+        return ResetPasswordResponse.builder()
+                .passwordUpdated(true)
+                .tokensRevoked(true)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ChangePasswordResponse changePassword(ChangePasswordRequest request, HttpServletRequest httpServletRequest) {
+        log.info("[CHANGE_PASSWORD] Started");
+
+        String token = resolveToken(httpServletRequest);
+        Long userId = jwtUtil.extractUserId(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("New password cannot be same as current password");
+        }
+
+        validatePasswordHistory(user.getId(), request.getNewPassword());
+
+        savePasswordHistory(user.getId(), user.getPassword());
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        saveAuditLog(user.getEmail(), AuditAction.PASSWORD_CHANGE, httpServletRequest, "Password changed by user");
+        emailService.sendPasswordChangedEmail(user.getEmail());
+
+        log.info("[CHANGE_PASSWORD] Completed | userId={}", user.getId());
+
+        return ChangePasswordResponse.builder()
+                .passwordChanged(true)
+                .message("Password changed successfully")
+                .build();
+    }
+
+    private void validatePasswordHistory(Long userId, String newPassword) {
+        int limit = securityProperties.getPasswordHistoryLimit();
+        List<PasswordHistory> history = passwordHistoryRepository
+                .findTop5ByUserIdOrderByChangedAtDesc(userId);
+
+        for (PasswordHistory entry : history.stream().limit(limit).toList()) {
+            if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
+                throw new RuntimeException("You cannot reuse your last " + limit + " passwords");
+            }
+        }
+    }
+
+    private void savePasswordHistory(Long userId, String passwordHash) {
+        passwordHistoryRepository.save(PasswordHistory.builder()
+                .userId(userId)
+                .passwordHash(passwordHash)
+                .changedAt(LocalDateTime.now())
+                .build());
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new RuntimeException("Missing or invalid Authorization header");
+        }
+        return header.substring(7);
     }
 
     private void validateAccountStatus(User user) {

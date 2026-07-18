@@ -1,11 +1,14 @@
 package com.clydrive.controller;
 
+import com.clydrive.dtos.request.ChangePasswordRequest;
 import com.clydrive.dtos.request.ForgotPasswordRequest;
 import com.clydrive.dtos.request.LoginRequest;
 import com.clydrive.dtos.request.RefreshTokenRequest;
 import com.clydrive.dtos.request.ResendVerificationRequest;
+import com.clydrive.dtos.request.ResetPasswordRequest;
 import com.clydrive.dtos.request.VerifyPasswordOtpRequest;
 import com.clydrive.dtos.response.ApiResponse;
+import com.clydrive.dtos.response.ChangePasswordResponse;
 import com.clydrive.dtos.response.EmailOtpVerifyResponse;
 import com.clydrive.dtos.response.EmailVerificationResponse;
 import com.clydrive.dtos.response.LoginHistoryResponse;
@@ -13,6 +16,7 @@ import com.clydrive.dtos.response.LoginResponse;
 import com.clydrive.dtos.response.LogoutResponse;
 import com.clydrive.dtos.response.OtpResponse;
 import com.clydrive.dtos.response.ResendVerificationEmailResponse;
+import com.clydrive.dtos.response.ResetPasswordResponse;
 import com.clydrive.dtos.response.TokenResponse;
 import com.clydrive.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -215,6 +219,50 @@ public class AuthController {
                 ApiResponse.success(
                         HttpStatus.OK.value(),
                         "OTP verified successfully",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<ResetPasswordResponse>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[RESET_PASSWORD] Request received | email={} | ip={} | uri={}",
+                request.getEmail(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        ResetPasswordResponse response = authService.resetPassword(request, httpServletRequest);
+
+        log.info("[RESET_PASSWORD] Completed | email={}", request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Password reset successfully. Please login again.",
+                        httpServletRequest.getRequestURI(),
+                        response));
+    }
+
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<ChangePasswordResponse>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        log.info("[CHANGE_PASSWORD] Request received | ip={} | uri={}",
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRequestURI());
+
+        ChangePasswordResponse response = authService.changePassword(request, httpServletRequest);
+
+        log.info("[CHANGE_PASSWORD] Completed");
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Password changed successfully",
                         httpServletRequest.getRequestURI(),
                         response));
     }
