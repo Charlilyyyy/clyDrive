@@ -200,7 +200,7 @@ Deliverables:
   • Prevent circular folder references
   • Empty trash / soft-delete pattern (optional)
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 11 — FILE SHARING & ACCESS CONTROL
