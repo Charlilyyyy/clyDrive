@@ -218,7 +218,7 @@ Deliverables:
   • Optional password protection on share links
   • Audit log entry on share create/access/revoke
 
-Status: [ ] Not started
+Status: [x] Done
 
 
 PHASE 12 — STORAGE QUOTA, AUDIT LOGS & BACKGROUND JOBS
